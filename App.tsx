@@ -4,7 +4,7 @@ import HUD from './components/HUD';
 import DataLogModal from './components/DataLogModal';
 import { CelestialId } from './types';
 import { CELESTIAL_DATA } from './constants';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Github } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentZone, setCurrentZone] = useState<CelestialId>(CelestialId.EARTH);
@@ -64,14 +64,26 @@ const App: React.FC = () => {
       </header>
       
       <div className="absolute top-6 right-6 z-50 pointer-events-auto">
-             <button 
-                onClick={() => setModalMode('logs')}
-                className="flex items-center gap-2 text-xs md:text-sm transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
-                style={{ color: themeColor, borderColor: `${themeColor}60`, boxShadow: `0 0 15px ${themeColor}10` }}
-            >
-                <span>Mission_Brief</span>
-                <ArrowRight className="w-3 h-3" />
-            </button>
+        <div className="flex flex-col items-end gap-2">
+          <button 
+            onClick={() => setModalMode('logs')}
+            className="flex items-center gap-2 text-xs md:text-sm transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
+            style={{ color: themeColor, borderColor: `${themeColor}60`, boxShadow: `0 0 15px ${themeColor}10` }}
+          >
+            <span>Mission_Brief</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+          <a
+            href="https://github.com/voku/CosmicAnalogy"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 text-[10px] md:text-xs transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-3 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
+            style={{ color: themeColor, borderColor: `${themeColor}40`, boxShadow: `0 0 10px ${themeColor}10` }}
+          >
+            <Github className="w-3 h-3" />
+            <span>Contribute</span>
+          </a>
+        </div>
       </div>
 
       <HUD 
