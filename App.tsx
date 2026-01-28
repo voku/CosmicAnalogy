@@ -48,26 +48,26 @@ const App: React.FC = () => {
         pingData={pingData}
       />
       
-      <header className="absolute top-6 left-6 z-50 pointer-events-none transition-colors duration-500">
+      <header className="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-auto z-50 pointer-events-none transition-colors duration-500 text-center md:text-left">
         <h1 
-          className="text-2xl md:text-3xl font-mono font-bold tracking-tighter drop-shadow-lg transition-colors duration-500"
+          className="text-base sm:text-xl md:text-3xl font-mono font-bold tracking-tight sm:tracking-tighter drop-shadow-lg transition-colors duration-500"
           style={{ color: themeColor, textShadow: `0 0 30px ${themeColor}40` }}
         >
           COSMIC_SYSTEM_PROFILER_v1.0
         </h1>
         <p 
-          className="text-[10px] md:text-xs font-mono uppercase tracking-widest bg-slate-900/80 backdrop-blur-md inline-block px-2 py-1 rounded border mt-2 transition-all duration-500 shadow-lg"
+          className="text-[9px] sm:text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] bg-slate-900/80 backdrop-blur-md inline-block px-2 py-1 rounded border mt-2 transition-all duration-500 shadow-lg"
           style={{ color: themeColor, borderColor: `${themeColor}50`, boxShadow: `0 0 20px ${themeColor}20` }}
         >
           Scale: 0.5ns (CPU) = 1s (Human) | Protocol: LIGHT_SPEED_v1
         </p>
       </header>
       
-      <div className="absolute top-6 right-6 z-50 pointer-events-auto">
-        <div className="flex flex-col items-end gap-2">
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 pointer-events-auto">
+        <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2">
           <button 
             onClick={() => setModalMode('logs')}
-            className="flex items-center gap-2 text-xs md:text-sm transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
+            className="flex items-center gap-2 text-[10px] sm:text-xs md:text-sm transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-3 sm:px-4 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
             style={{ color: themeColor, borderColor: `${themeColor}60`, boxShadow: `0 0 15px ${themeColor}10` }}
           >
             <span>Mission_Brief</span>
@@ -77,7 +77,7 @@ const App: React.FC = () => {
             href="https://github.com/voku/CosmicAnalogy"
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 text-[10px] md:text-xs transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-3 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
+            className="flex items-center gap-2 text-[9px] sm:text-[10px] md:text-xs transition-all duration-300 bg-slate-900/80 backdrop-blur-md px-2.5 sm:px-3 py-2 rounded-lg border shadow-lg font-mono uppercase tracking-wider hover:text-white hover:border-white/80 hover:bg-slate-800"
             style={{ color: themeColor, borderColor: `${themeColor}40`, boxShadow: `0 0 10px ${themeColor}10` }}
           >
             <Github className="w-3 h-3" />

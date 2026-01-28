@@ -24,6 +24,8 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
   const targetViewRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const animationFrameRef = useRef<number>(0);
   const starsRef = useRef<{ x: number; y: number; size: number; alpha: number; layer: number }[]>([]);
+  const parallaxRef = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
+  const lastWheelTimeRef = useRef(0);
 
   // Ping State Management
   const pingState = useRef<{ 
@@ -227,10 +229,18 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       ctx.fillStyle = '#020617';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      const parallax = parallaxRef.current;
+      parallax.vx *= 0.92;
+      parallax.vy *= 0.92;
+      parallax.x = Math.max(-120, Math.min(120, parallax.x + parallax.vx));
+      parallax.y = Math.max(-120, Math.min(120, parallax.y + parallax.vy));
+
       // Stars - White for visibility on dark
       starsRef.current.forEach(star => {
-        const px = (star.x - view.x * star.layer * 0.05) * view.zoom + canvas.width/2;
-        const py = (star.y - view.y * star.layer * 0.05) * view.zoom + canvas.height/2;
+        const parallaxX = parallax.x * star.layer * 0.08;
+        const parallaxY = parallax.y * star.layer * 0.08;
+        const px = (star.x - view.x * star.layer * 0.05 - parallaxX) * view.zoom + canvas.width/2;
+        const py = (star.y - view.y * star.layer * 0.05 - parallaxY) * view.zoom + canvas.height/2;
         
         const size = 200000; 
         const wx = (px % size + size) % size - size/2 + canvas.width/2;
@@ -239,7 +249,8 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
         if (wx > -5 && wx < canvas.width + 5 && wy > -5 && wy < canvas.height + 5) {
             ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
             ctx.beginPath();
-            ctx.arc(wx, wy, star.size * Math.max(0.5, view.zoom * 100), 0, Math.PI * 2);
+            const starSize = star.size * (0.6 + star.layer * 0.6) * Math.max(0.5, view.zoom * 100);
+            ctx.arc(wx, wy, starSize, 0, Math.PI * 2);
             ctx.fill();
         }
       });
@@ -269,6 +280,9 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       });
 
       const sortedObjects = Object.values(CELESTIAL_DATA).sort((a, b) => 0);
+
+      const viewportScale = Math.min(canvas.width, canvas.height) / 800;
+      const baseLabelSize = Math.max(10, 14 * viewportScale);
 
       sortedObjects.forEach((data) => {
           const renderPos = getRenderPosition(data, canvas.width, canvas.height);
@@ -332,7 +346,9 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
                   // Text - White for dark map
                   ctx.fillStyle = '#ffffff';
                   // Increased font size for better readability
-                  ctx.font = isActive ? 'bold 15px Rajdhani' : '14px Rajdhani';
+                  ctx.font = isActive
+                    ? `bold ${Math.min(18, baseLabelSize + 2)}px Rajdhani`
+                    : `${Math.min(16, baseLabelSize)}px Rajdhani`;
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'top';
                   const labelY = renderPos.y + visualRadius + 8;
@@ -504,6 +520,15 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     if (isDragging) return;
+
+    const now = performance.now();
+    const dt = Math.max(16, now - lastWheelTimeRef.current);
+    lastWheelTimeRef.current = now;
+    const scrollBoost = Math.min(120, Math.abs(e.deltaY)) / dt;
+    parallaxRef.current.vy += Math.sign(e.deltaY) * scrollBoost * 80;
+    if (Math.abs(e.deltaX) > 0.5) {
+      parallaxRef.current.vx += Math.sign(e.deltaX) * Math.min(120, Math.abs(e.deltaX)) * 0.35;
+    }
 
     const rect = canvasRef.current!.getBoundingClientRect();
     const mx = e.clientX - rect.left;
