@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CelestialId } from '../types';
 import { CELESTIAL_DATA, ZONE_ICONS } from '../constants';
-import { Send } from 'lucide-react';
+import { ChevronDown, ChevronUp, Send } from 'lucide-react';
 
 interface HUDProps {
   currentZone: CelestialId;
@@ -10,6 +10,7 @@ interface HUDProps {
 }
 
 const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
+  const [isPanelVisible, setIsPanelVisible] = useState(true);
   const currentData = CELESTIAL_DATA[currentZone];
   const { component } = currentData;
   const HUD_PANEL_OFFSETS = {
@@ -18,13 +19,17 @@ const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
     lg: '420px',
   };
   const HUD_NAV_OFFSET_ADJUST = '8rem';
+  const navBaseClasses = 'left-1/2 -translate-x-1/2 md:bottom-auto md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:right-8 flex flex-row md:flex-col gap-2 pointer-events-auto';
+  const navPositionClasses = isPanelVisible
+    ? `bottom-[calc(var(--hud-panel-offset)-var(--hud-nav-adjust))] ${navBaseClasses} [--hud-panel-offset:${HUD_PANEL_OFFSETS.base}] [--hud-nav-adjust:${HUD_NAV_OFFSET_ADJUST}] sm:[--hud-panel-offset:${HUD_PANEL_OFFSETS.sm}] lg:[--hud-panel-offset:${HUD_PANEL_OFFSETS.lg}]`
+    : `bottom-6 ${navBaseClasses}`;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 pointer-events-none z-[70] flex flex-col justify-end">
       
       {/* Sector Navigation (Right Side) */}
       <div
-        className={`absolute bottom-[calc(var(--hud-panel-offset)-var(--hud-nav-adjust))] left-1/2 -translate-x-1/2 md:bottom-auto md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:right-8 flex flex-row md:flex-col gap-2 pointer-events-auto [--hud-panel-offset:${HUD_PANEL_OFFSETS.base}] [--hud-nav-adjust:${HUD_NAV_OFFSET_ADJUST}] sm:[--hud-panel-offset:${HUD_PANEL_OFFSETS.sm}] lg:[--hud-panel-offset:${HUD_PANEL_OFFSETS.lg}]`}
+        className={`absolute z-[80] ${navPositionClasses}`}
       >
         <div className="bg-slate-50/95 backdrop-blur-md border border-slate-200 rounded-xl p-2 shadow-xl flex flex-row md:flex-col gap-1">
              <div className="text-[10px] text-slate-500 text-center font-mono font-bold tracking-widest mb-1 opacity-90">NODES</div>
@@ -71,12 +76,20 @@ const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
                 <Send className="w-4 h-4" />
                 <span>Ping_Node</span>
             </button>
+            <button
+                onClick={() => setIsPanelVisible((prev) => !prev)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/95 backdrop-blur border border-slate-300 rounded-lg transition-all text-[11px] sm:text-sm font-mono uppercase tracking-wider shadow-lg font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            >
+                {isPanelVisible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                <span>{isPanelVisible ? 'Hide_Panel' : 'Show_Panel'}</span>
+            </button>
         </div>
 
         {/* Terminal / JSON Output Panel - High opacity to block map noise */}
-        <div
-          className={`bg-slate-50/95 border-t border-slate-300 backdrop-blur-xl p-3 sm:p-4 md:p-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] max-h-[calc(100vh-var(--hud-panel-offset))] overflow-y-auto [--hud-panel-offset:${HUD_PANEL_OFFSETS.base}] sm:[--hud-panel-offset:${HUD_PANEL_OFFSETS.sm}] lg:[--hud-panel-offset:${HUD_PANEL_OFFSETS.lg}]`}
-        >
+        {isPanelVisible && (
+          <div
+            className="bg-slate-50/95 border-t border-slate-300 backdrop-blur-xl p-3 sm:p-4 md:p-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] max-h-[77vh] sm:max-h-[70vh] lg:max-h-[65vh] overflow-y-auto"
+          >
             <div className="max-w-5xl mx-auto font-mono text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-relaxed">
                 
                 {/* JSON Representation - High Contrast Text */}
@@ -144,7 +157,8 @@ const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
                 </div>
 
             </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

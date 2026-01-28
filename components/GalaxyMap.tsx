@@ -239,9 +239,7 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
         }
       }
 
-      // DARK MAP BACKGROUND (#020617 - Slate 950)
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const parallax = parallaxRef.current;
       parallax.vx *= PARALLAX_DECAY;
@@ -682,7 +680,7 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
   }, []);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 w-full h-full bg-[#020617] cursor-move overflow-hidden" style={{ touchAction: 'none' }}>
+    <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-move overflow-hidden" style={{ touchAction: 'none' }}>
       <canvas
         ref={canvasRef}
         onWheel={handleWheel}
