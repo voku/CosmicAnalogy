@@ -11,6 +11,16 @@ interface GalaxyMapProps {
 }
 
 const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCameraControl, pingData }) => {
+  const PARALLAX_DECAY = 0.92;
+  const PARALLAX_CLAMP = 120;
+  const PARALLAX_LAYER_SCALE = 0.08;
+  const SCROLL_DELTA_CAP = 120;
+  const SCROLL_VY_SCALE = 80;
+  const SCROLL_VX_SCALE = 0.35;
+  const STAR_LAYER_SIZE_MIN = 0.6;
+  const STAR_LAYER_SIZE_MAX = 1.2;
+  const STAR_SIZE_MAX = 12;
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -24,6 +34,8 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
   const targetViewRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const animationFrameRef = useRef<number>(0);
   const starsRef = useRef<{ x: number; y: number; size: number; alpha: number; layer: number }[]>([]);
+  const parallaxRef = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
+  const lastWheelTimeRef = useRef(0);
 
   // Ping State Management
   const pingState = useRef<{ 
@@ -192,6 +204,10 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       targetViewRef.current = { x: 0, y: 0, zoom: 0.8 };
   }, []);
 
+  useEffect(() => {
+    lastWheelTimeRef.current = performance.now();
+  }, []);
+
   // --- RENDER LOOP ---
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -227,10 +243,18 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       ctx.fillStyle = '#020617';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      const parallax = parallaxRef.current;
+      parallax.vx *= PARALLAX_DECAY;
+      parallax.vy *= PARALLAX_DECAY;
+      parallax.x = Math.max(-PARALLAX_CLAMP, Math.min(PARALLAX_CLAMP, parallax.x + parallax.vx));
+      parallax.y = Math.max(-PARALLAX_CLAMP, Math.min(PARALLAX_CLAMP, parallax.y + parallax.vy));
+
       // Stars - White for visibility on dark
       starsRef.current.forEach(star => {
-        const px = (star.x - view.x * star.layer * 0.05) * view.zoom + canvas.width/2;
-        const py = (star.y - view.y * star.layer * 0.05) * view.zoom + canvas.height/2;
+        const parallaxX = parallax.x * star.layer * PARALLAX_LAYER_SCALE;
+        const parallaxY = parallax.y * star.layer * PARALLAX_LAYER_SCALE;
+        const px = (star.x - view.x * star.layer * 0.05 - parallaxX) * view.zoom + canvas.width/2;
+        const py = (star.y - view.y * star.layer * 0.05 - parallaxY) * view.zoom + canvas.height/2;
         
         const size = 200000; 
         const wx = (px % size + size) % size - size/2 + canvas.width/2;
@@ -239,7 +263,9 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
         if (wx > -5 && wx < canvas.width + 5 && wy > -5 && wy < canvas.height + 5) {
             ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
             ctx.beginPath();
-            ctx.arc(wx, wy, star.size * Math.max(0.5, view.zoom * 100), 0, Math.PI * 2);
+            const layerSize = STAR_LAYER_SIZE_MIN + star.layer * (STAR_LAYER_SIZE_MAX - STAR_LAYER_SIZE_MIN);
+            const starSize = star.size * layerSize * Math.max(0.5, view.zoom * 100);
+            ctx.arc(wx, wy, Math.min(starSize, STAR_SIZE_MAX), 0, Math.PI * 2);
             ctx.fill();
         }
       });
@@ -269,6 +295,9 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       });
 
       const sortedObjects = Object.values(CELESTIAL_DATA).sort((a, b) => 0);
+
+      const viewportScale = Math.min(canvas.width, canvas.height) / 800;
+      const baseLabelSize = Math.max(10, 14 * viewportScale);
 
       sortedObjects.forEach((data) => {
           const renderPos = getRenderPosition(data, canvas.width, canvas.height);
@@ -332,7 +361,9 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
                   // Text - White for dark map
                   ctx.fillStyle = '#ffffff';
                   // Increased font size for better readability
-                  ctx.font = isActive ? 'bold 15px Rajdhani' : '14px Rajdhani';
+                  ctx.font = isActive
+                    ? `bold ${Math.min(18, baseLabelSize + 2)}px Rajdhani`
+                    : `${Math.min(16, baseLabelSize)}px Rajdhani`;
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'top';
                   const labelY = renderPos.y + visualRadius + 8;
@@ -504,6 +535,15 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     if (isDragging) return;
+
+    const now = performance.now();
+    const dt = lastWheelTimeRef.current === 0 ? 16 : Math.max(16, now - lastWheelTimeRef.current);
+    lastWheelTimeRef.current = now;
+    const scrollBoost = Math.min(SCROLL_DELTA_CAP, Math.abs(e.deltaY)) / dt;
+    parallaxRef.current.vy += Math.sign(e.deltaY) * scrollBoost * SCROLL_VY_SCALE;
+    if (Math.abs(e.deltaX) > 0.5) {
+      parallaxRef.current.vx += Math.sign(e.deltaX) * Math.min(SCROLL_DELTA_CAP, Math.abs(e.deltaX)) * SCROLL_VX_SCALE;
+    }
 
     const rect = canvasRef.current!.getBoundingClientRect();
     const mx = e.clientX - rect.left;
