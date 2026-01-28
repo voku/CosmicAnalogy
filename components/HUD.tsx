@@ -10,7 +10,7 @@ interface HUDProps {
 }
 
 const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
-  const [isPanelVisible, setIsPanelVisible] = useState(true);
+  const [isPanelVisible, setIsPanelVisible] = useState(false);
   const currentData = CELESTIAL_DATA[currentZone];
   const { component } = currentData;
   const HUD_PANEL_OFFSETS = {
@@ -22,7 +22,8 @@ const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
   const navBaseClasses = 'left-1/2 -translate-x-1/2 md:bottom-auto md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:right-8 flex flex-row md:flex-col gap-2 pointer-events-auto';
   const navPositionClasses = isPanelVisible
     ? `bottom-[calc(var(--hud-panel-offset)-var(--hud-nav-adjust))] ${navBaseClasses} [--hud-panel-offset:${HUD_PANEL_OFFSETS.base}] [--hud-nav-adjust:${HUD_NAV_OFFSET_ADJUST}] sm:[--hud-panel-offset:${HUD_PANEL_OFFSETS.sm}] lg:[--hud-panel-offset:${HUD_PANEL_OFFSETS.lg}]`
-    : `bottom-6 ${navBaseClasses}`;
+    : `bottom-4 sm:bottom-6 ${navBaseClasses}`;
+  const dashboardPaddingClasses = isPanelVisible ? '' : 'pb-24 sm:pb-28 md:pb-0';
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[70] flex flex-col justify-end">
@@ -60,7 +61,7 @@ const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
       </div>
 
       {/* Main Dashboard */}
-      <div className="w-full pointer-events-auto">
+      <div className={`w-full pointer-events-auto ${dashboardPaddingClasses}`}>
         {/* Action Buttons - High opacity background */}
         <div className="max-w-4xl mx-auto mb-3 sm:mb-4 flex justify-center md:justify-end gap-3 px-4">
             <button 
