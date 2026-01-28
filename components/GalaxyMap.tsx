@@ -11,6 +11,16 @@ interface GalaxyMapProps {
 }
 
 const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCameraControl, pingData }) => {
+  const PARALLAX_DECAY = 0.92;
+  const PARALLAX_CLAMP = 120;
+  const PARALLAX_LAYER_SCALE = 0.08;
+  const SCROLL_DELTA_CAP = 120;
+  const SCROLL_VY_SCALE = 80;
+  const SCROLL_VX_SCALE = 0.35;
+  const STAR_LAYER_SIZE_MIN = 0.6;
+  const STAR_LAYER_SIZE_MAX = 1.2;
+  const STAR_SIZE_MAX = 12;
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -194,6 +204,10 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       targetViewRef.current = { x: 0, y: 0, zoom: 0.8 };
   }, []);
 
+  useEffect(() => {
+    lastWheelTimeRef.current = performance.now();
+  }, []);
+
   // --- RENDER LOOP ---
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -230,15 +244,15 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const parallax = parallaxRef.current;
-      parallax.vx *= 0.92;
-      parallax.vy *= 0.92;
-      parallax.x = Math.max(-120, Math.min(120, parallax.x + parallax.vx));
-      parallax.y = Math.max(-120, Math.min(120, parallax.y + parallax.vy));
+      parallax.vx *= PARALLAX_DECAY;
+      parallax.vy *= PARALLAX_DECAY;
+      parallax.x = Math.max(-PARALLAX_CLAMP, Math.min(PARALLAX_CLAMP, parallax.x + parallax.vx));
+      parallax.y = Math.max(-PARALLAX_CLAMP, Math.min(PARALLAX_CLAMP, parallax.y + parallax.vy));
 
       // Stars - White for visibility on dark
       starsRef.current.forEach(star => {
-        const parallaxX = parallax.x * star.layer * 0.08;
-        const parallaxY = parallax.y * star.layer * 0.08;
+        const parallaxX = parallax.x * star.layer * PARALLAX_LAYER_SCALE;
+        const parallaxY = parallax.y * star.layer * PARALLAX_LAYER_SCALE;
         const px = (star.x - view.x * star.layer * 0.05 - parallaxX) * view.zoom + canvas.width/2;
         const py = (star.y - view.y * star.layer * 0.05 - parallaxY) * view.zoom + canvas.height/2;
         
@@ -249,8 +263,9 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
         if (wx > -5 && wx < canvas.width + 5 && wy > -5 && wy < canvas.height + 5) {
             ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
             ctx.beginPath();
-            const starSize = star.size * (0.6 + star.layer * 0.6) * Math.max(0.5, view.zoom * 100);
-            ctx.arc(wx, wy, starSize, 0, Math.PI * 2);
+            const layerSize = STAR_LAYER_SIZE_MIN + star.layer * (STAR_LAYER_SIZE_MAX - STAR_LAYER_SIZE_MIN);
+            const starSize = star.size * layerSize * Math.max(0.5, view.zoom * 100);
+            ctx.arc(wx, wy, Math.min(starSize, STAR_SIZE_MAX), 0, Math.PI * 2);
             ctx.fill();
         }
       });
@@ -522,12 +537,12 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
     if (isDragging) return;
 
     const now = performance.now();
-    const dt = Math.max(16, now - lastWheelTimeRef.current);
+    const dt = lastWheelTimeRef.current === 0 ? 16 : Math.max(16, now - lastWheelTimeRef.current);
     lastWheelTimeRef.current = now;
-    const scrollBoost = Math.min(120, Math.abs(e.deltaY)) / dt;
-    parallaxRef.current.vy += Math.sign(e.deltaY) * scrollBoost * 80;
+    const scrollBoost = Math.min(SCROLL_DELTA_CAP, Math.abs(e.deltaY)) / dt;
+    parallaxRef.current.vy += Math.sign(e.deltaY) * scrollBoost * SCROLL_VY_SCALE;
     if (Math.abs(e.deltaX) > 0.5) {
-      parallaxRef.current.vx += Math.sign(e.deltaX) * Math.min(120, Math.abs(e.deltaX)) * 0.35;
+      parallaxRef.current.vx += Math.sign(e.deltaX) * Math.min(SCROLL_DELTA_CAP, Math.abs(e.deltaX)) * SCROLL_VX_SCALE;
     }
 
     const rect = canvasRef.current!.getBoundingClientRect();

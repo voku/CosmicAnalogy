@@ -12,12 +12,20 @@ interface HUDProps {
 const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
   const currentData = CELESTIAL_DATA[currentZone];
   const { component } = currentData;
+  const HUD_PANEL_OFFSETS = {
+    base: '320px',
+    sm: '360px',
+    lg: '420px',
+  };
+  const HUD_NAV_OFFSET_ADJUST = '8rem';
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 flex flex-col justify-end">
       
       {/* Sector Navigation (Right Side) */}
-      <div className="absolute bottom-[calc(45vh+1rem)] left-1/2 -translate-x-1/2 md:bottom-auto md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:right-8 flex flex-row md:flex-col gap-2 pointer-events-auto">
+      <div
+        className={`absolute bottom-[calc(var(--hud-panel-offset)-var(--hud-nav-adjust))] left-1/2 -translate-x-1/2 md:bottom-auto md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:right-8 flex flex-row md:flex-col gap-2 pointer-events-auto [--hud-panel-offset:${HUD_PANEL_OFFSETS.base}] [--hud-nav-adjust:${HUD_NAV_OFFSET_ADJUST}] sm:[--hud-panel-offset:${HUD_PANEL_OFFSETS.sm}] lg:[--hud-panel-offset:${HUD_PANEL_OFFSETS.lg}]`}
+      >
         <div className="bg-slate-50/95 backdrop-blur-md border border-slate-200 rounded-xl p-2 shadow-xl flex flex-row md:flex-col gap-1">
              <div className="text-[10px] text-slate-500 text-center font-mono font-bold tracking-widest mb-1 opacity-90">NODES</div>
              {Object.values(CELESTIAL_DATA).map((data) => (
@@ -66,7 +74,9 @@ const HUD: React.FC<HUDProps> = ({ currentZone, onNavigate, onPing }) => {
         </div>
 
         {/* Terminal / JSON Output Panel - High opacity to block map noise */}
-        <div className="bg-slate-50/95 border-t border-slate-300 backdrop-blur-xl p-3 sm:p-4 md:p-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-360px)] lg:max-h-[calc(100vh-420px)] overflow-y-auto">
+        <div
+          className={`bg-slate-50/95 border-t border-slate-300 backdrop-blur-xl p-3 sm:p-4 md:p-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] max-h-[calc(100vh-var(--hud-panel-offset))] overflow-y-auto [--hud-panel-offset:${HUD_PANEL_OFFSETS.base}] sm:[--hud-panel-offset:${HUD_PANEL_OFFSETS.sm}] lg:[--hud-panel-offset:${HUD_PANEL_OFFSETS.lg}]`}
+        >
             <div className="max-w-5xl mx-auto font-mono text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-relaxed">
                 
                 {/* JSON Representation - High Contrast Text */}
