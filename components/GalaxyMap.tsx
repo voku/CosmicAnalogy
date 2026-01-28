@@ -738,19 +738,6 @@ const GalaxyMap: React.FC<GalaxyMapProps> = ({ activeZone, onZoneSelect, setCame
         <button onClick={fitAll} className="p-2 text-slate-300 hover:bg-slate-800 hover:text-brand-cyan transition-colors rounded-sm" title="Fit All"><Maximize className="w-5 h-5" /></button>
       </div>
 
-      <div className="absolute bottom-20 md:bottom-8 left-4 md:left-8 pointer-events-none z-10 opacity-95">
-          <div className="flex flex-col gap-2 bg-white/95 p-3 rounded border border-slate-200 backdrop-blur-md shadow-lg text-slate-900">
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Relative Distance Scale</div>
-              <div className="flex items-end gap-1 h-8 border-b border-slate-400 pb-1">
-                   <div className="w-px h-full bg-slate-500"></div>
-                   <div className="w-12 h-px bg-slate-400/50 mb-0"></div>
-                   <div className="w-px h-1/2 bg-slate-500"></div>
-                   <div className="w-12 h-px bg-slate-400/50 mb-0"></div>
-                   <div className="w-px h-full bg-slate-500"></div>
-                   <span className="text-xs text-sky-700 ml-2 font-mono whitespace-nowrap self-end font-bold">Physical Linear Scale (1:1)</span>
-              </div>
-          </div>
-      </div>
     </div>
   );
 };
