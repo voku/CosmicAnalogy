@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import GalaxyMap from './components/GalaxyMap';
 import HUD from './components/HUD';
 import DataLogModal from './components/DataLogModal';
+import StarField from './components/StarField';
 import { CelestialId } from './types';
 import { CELESTIAL_DATA } from './constants';
 import { ArrowRight, Github } from 'lucide-react';
@@ -40,6 +41,7 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden relative text-slate-100 font-sans bg-[#020617] selection:bg-brand-cyan selection:text-space-950">
+      <StarField />
       
       <GalaxyMap 
         activeZone={currentZone} 
