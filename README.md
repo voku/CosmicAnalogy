@@ -1,7 +1,3 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # Cosmic System Profiler
 
 Cosmic System Profiler is a Vite + React experience that visualizes a stylized cosmic system dashboard with an interactive map, telemetry HUD, and mission data views. It is built for production deployments with GitHub Pages and a lightweight CI pipeline.
