@@ -1,14 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Database, HardDrive, Cpu, Network, Server, Globe, Sun,
-  Image as ImageIcon, Info, ChevronRight, Zap,
-  Map as MapIcon, ZoomIn, ZoomOut, Timer, Layers, Gauge,
+  Image as ImageIcon, Info, ChevronRight, Zap, Disc, Circle, Star,
+  Map as MapIcon, ZoomIn, ZoomOut, Timer, Layers, Gauge, Maximize2,
 } from 'lucide-react';
 import StarField from './components/StarField';
 
 /* ─── Mode type ──────────────────────────────────────────── */
 type Mode = 'storage' | 'speed';
+
+/* ─── Window width hook for responsive sizing ───────────── */
+const useWindowWidth = (): number => {
+  const [width, setWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200,
+  );
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+};
 
 /* ─── Shared item shape used by both modes ───────────────── */
 interface CosmicItem {
@@ -181,6 +194,51 @@ const CELESTIAL_BODIES = [
   { name: 'Proxima Centauri', km: 40_207_975_000_000, size: 8,   color: '#ec4899', gradient: 'radial-gradient(circle at 35% 35%, #fbcfe8, #ec4899 60%, #831843)' },
 ];
 
+/* ─── Cosmic body details (with real physical diameters) ── */
+const COSMIC_BODY_DETAILS = [
+  {
+    name: 'Earth', km: 0, diameter_km: 12_742,
+    color: '#3b82f6', gradient: 'radial-gradient(circle at 35% 35%, #60a5fa, #1d4ed8 60%, #172554)',
+    icon: (size: number) => <Globe style={{ width: size, height: size }} className="text-sky-200 opacity-40" />,
+  },
+  {
+    name: 'Moon', km: 384_400, diameter_km: 3_474,
+    color: '#94a3b8', gradient: 'radial-gradient(circle at 40% 35%, #e2e8f0, #94a3b8 60%, #475569)',
+    icon: (size: number) => <Disc style={{ width: size, height: size }} className="text-slate-200 opacity-40" />,
+  },
+  {
+    name: 'Mars', km: 54_600_000, diameter_km: 6_779,
+    color: '#ef4444', gradient: 'radial-gradient(circle at 35% 35%, #fca5a5, #ef4444 60%, #7f1d1d)',
+    icon: (size: number) => <Circle style={{ width: size, height: size }} className="text-red-200 opacity-40" />,
+  },
+  {
+    name: 'Sun', km: 149_600_000, diameter_km: 1_392_700,
+    color: '#f59e0b', gradient: 'radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 50%, #b45309 80%, #78350f)',
+    icon: (size: number) => <Sun style={{ width: size, height: size }} className="text-amber-100 opacity-30" />,
+  },
+  {
+    name: 'Heliopause', km: 18_100_000_000, diameter_km: 0,
+    color: '#8b5cf6', gradient: 'radial-gradient(circle at 40% 40%, #c4b5fd, #8b5cf6 60%, #4c1d95)',
+    icon: (size: number) => <Zap style={{ width: size, height: size }} className="text-violet-200 opacity-40" />,
+  },
+  {
+    name: 'Proxima Centauri', km: 40_207_975_000_000, diameter_km: 214_000,
+    color: '#ec4899', gradient: 'radial-gradient(circle at 35% 35%, #fbcfe8, #ec4899 60%, #831843)',
+    icon: (size: number) => <Star style={{ width: size, height: size }} className="text-pink-200 opacity-40" />,
+  },
+] as const;
+
+type CosmicBodyDetail = typeof COSMIC_BODY_DETAILS[number];
+
+const EARTH_DIAMETER_KM = COSMIC_BODY_DETAILS[0].diameter_km;
+const EARTH_BASE_PX = 44; // Earth reference radius (px) in realistic mode
+
+/** Cube-root-of-volume radius for realistic proportional scaling */
+const getRealisticRadius = (diameter_km: number): number => {
+  if (diameter_km <= 0) return 10; // boundary objects have no physical size
+  return Math.cbrt(diameter_km / EARTH_DIAMETER_KM) * EARTH_BASE_PX;
+};
+
 /* ─── App ────────────────────────────────────────────────── */
 const App: React.FC = () => {
   const [mode, setMode] = useState<Mode>('storage');
@@ -188,14 +246,52 @@ const App: React.FC = () => {
   const [showInfo, setShowInfo] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [realisticScale, setRealisticScale] = useState(false);
+
+  const windowWidth = useWindowWidth();
 
   const items = mode === 'storage' ? storageItems : speedItems;
   const current = items[activeIndex] ?? items[0];
   const zoomScale = 0.8 + zoomLevel * 0.4;
 
+  /* Find the closest cosmic body for the current item by log-distance */
+  const matchedCosmicBody: CosmicBodyDetail = useMemo(() => {
+    const logDist = (km: number) => Math.log10(km + 1);
+    const logTarget = logDist(current.distance_km);
+    return COSMIC_BODY_DETAILS.reduce((closest, body) => {
+      const diff = Math.abs(logDist(body.km) - logTarget);
+      const closestDiff = Math.abs(logDist(closest.km) - logTarget);
+      return diff < closestDiff ? body : closest;
+    });
+  }, [current.distance_km]);
+
+  /*
+   * Responsive sphere sizes:
+   *   – sideColumnPx      → available px for each side column
+   *   – maxBodyRadius     → normal mode cap: sphere visual size (css × zoomScale) fits column
+   *   – realisticRightRadius → proportional size; may overflow (dramatic effect is intentional)
+   */
+  const sideColumnPx = Math.floor(
+    (Math.min(windowWidth - 32, 896) - 80) / 2,
+  );
+  // Divide by zoomScale so the VISUAL (post-transform) diameter stays inside the column
+  const maxBodyRadius = Math.min(96, Math.floor(sideColumnPx / (2 * zoomScale)));
+  // Earth reference for realistic mode, also capped
+  const earthBasePx = Math.min(EARTH_BASE_PX, Math.floor(sideColumnPx / (3 * zoomScale)));
+
+  const realisticRightRadius = Math.min(
+    getRealisticRadius(matchedCosmicBody.diameter_km),
+    sideColumnPx - 12,
+  );
+  const realisticRightCapped = realisticRightRadius < getRealisticRadius(matchedCosmicBody.diameter_km);
+
   /* derived sizes */
-  const earthRadius = 48 + current.scale * 60;
-  const cosmicRadius = 96;
+  const earthRadius = realisticScale
+    ? earthBasePx
+    : Math.min(48 + current.scale * 60, maxBodyRadius);
+  const cosmicRadius = realisticScale
+    ? realisticRightRadius
+    : Math.min(96, maxBodyRadius);
 
   /* accent for mode toggle */
   const modeAccent = mode === 'storage' ? '#22d3ee' : '#34d399';
@@ -314,7 +410,7 @@ const App: React.FC = () => {
                 <motion.div
                   animate={{ scale: [1, 1.03, 1], rotate: [0, 5, -5, 0] }}
                   transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-                  className="rounded-full flex items-center justify-center shrink-0 shadow-2xl"
+                  className="rounded-full flex items-center justify-center shadow-2xl"
                   style={{
                     width: earthRadius * 2,
                     height: earthRadius * 2,
@@ -324,13 +420,18 @@ const App: React.FC = () => {
                 >
                   <Globe className="w-6 h-6 text-sky-200 opacity-40" />
                 </motion.div>
-                <p className="text-center text-xs sm:text-sm text-slate-300 max-w-[180px] leading-relaxed italic">
+                {realisticScale && (
+                  <span className="text-[9px] font-mono text-sky-500/70 tracking-wider">
+                    {COSMIC_BODY_DETAILS[0].name} — {EARTH_DIAMETER_KM.toLocaleString()} km ⌀
+                  </span>
+                )}
+                <p className="text-center text-xs sm:text-sm text-slate-300 max-w-[160px] leading-relaxed italic">
                   &ldquo;{current.earth}&rdquo;
                 </p>
               </div>
 
               {/* Center: The item */}
-              <div className="flex flex-col items-center gap-3 px-4 sm:px-8 shrink-0">
+              <div className="flex flex-col items-center gap-3 px-3 sm:px-6 shrink-0">
                 <ChevronRight className="w-5 h-5 text-slate-500" />
                 <motion.div
                   animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
@@ -358,28 +459,46 @@ const App: React.FC = () => {
 
               {/* Right: Cosmic body */}
               <div className="flex flex-col items-center gap-4 min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-amber-400">
-                  <Sun className="w-4 h-4" />
-                  <span className="text-xs font-mono uppercase tracking-widest">Cosmic Scale</span>
+                <div className="flex items-center gap-2" style={{ color: matchedCosmicBody.color }}>
+                  {matchedCosmicBody.icon(16)}
+                  <span className="text-xs font-mono uppercase tracking-widest">{matchedCosmicBody.name}</span>
                 </div>
                 <motion.div
                   animate={{ scale: [1, 1.02, 1] }}
                   transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                  className="rounded-full flex items-center justify-center shrink-0 shadow-2xl"
+                  className="rounded-full flex items-center justify-center shadow-2xl"
                   style={{
                     width: cosmicRadius * 2,
                     height: cosmicRadius * 2,
-                    background: 'radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 50%, #b45309 80%, #78350f)',
-                    boxShadow: `0 0 ${cosmicRadius}px #f59e0b50, inset 0 0 ${cosmicRadius / 2}px #d9770040`,
+                    background: matchedCosmicBody.gradient,
+                    boxShadow: `0 0 ${cosmicRadius}px ${matchedCosmicBody.color}50, inset 0 0 ${cosmicRadius / 2}px ${matchedCosmicBody.color}40`,
                   }}
                 >
-                  <Sun className="w-8 h-8 text-amber-100 opacity-30" />
+                  {matchedCosmicBody.icon(Math.max(16, Math.min(32, cosmicRadius / 3)))}
                 </motion.div>
-                <p className="text-center text-xs sm:text-sm text-slate-300 max-w-[180px] leading-relaxed italic">
+                {realisticScale && matchedCosmicBody.diameter_km > 0 && (
+                  <span className="text-[9px] font-mono tracking-wider" style={{ color: `${matchedCosmicBody.color}90` }}>
+                    {matchedCosmicBody.diameter_km.toLocaleString()} km ⌀
+                    {realisticRightCapped && ' (display capped)'}
+                  </span>
+                )}
+                <p className="text-center text-xs sm:text-sm text-slate-300 max-w-[160px] leading-relaxed italic">
                   &ldquo;{current.cosmic}&rdquo;
                 </p>
               </div>
             </div>
+
+            {/* Realistic scale badge */}
+            {realisticScale && (
+              <div className="absolute top-3 left-3">
+                <span
+                  className="text-[9px] font-mono px-2 py-1 rounded border tracking-wider"
+                  style={{ color: current.color, borderColor: `${current.color}40`, backgroundColor: `${current.color}10` }}
+                >
+                  ∛ VOLUME SCALE
+                </span>
+              </div>
+            )}
 
             {/* Zoom indicator */}
             <div className="absolute bottom-3 right-3">
@@ -406,6 +525,11 @@ const App: React.FC = () => {
                   {mode === 'storage'
                     ? 'Scale Map — storage sizes vs. cosmic distance'
                     : 'Scale Map — latency vs. cosmic distance'}
+                  {realisticScale && (
+                    <span className="ml-auto text-[9px] tracking-wider" style={{ color: current.color }}>
+                      ∛ body sizes to scale
+                    </span>
+                  )}
                 </h3>
 
                 {/* Cosmic distance ruler */}
@@ -419,22 +543,26 @@ const App: React.FC = () => {
                     <span>Proxima ★</span>
                   </div>
                   <div className="relative h-2 bg-slate-800 rounded-full overflow-visible">
-                    {CELESTIAL_BODIES.map((body) => {
+                    {CELESTIAL_BODIES.map((body, bi) => {
                       const maxKm = CELESTIAL_BODIES[CELESTIAL_BODIES.length - 1].km;
                       const pct = maxKm === 0 ? 0 : Math.max(0, (Math.log10(body.km + 1) / Math.log10(maxKm + 1)) * 100);
+                      const detail = COSMIC_BODY_DETAILS[bi];
+                      const dotSize = realisticScale && detail
+                        ? Math.max(4, Math.min(32, getRealisticRadius(detail.diameter_km) * 0.5))
+                        : body.size;
                       return (
                         <div
                           key={body.name}
-                          className="absolute top-1/2 -translate-y-1/2 rounded-full border-2 border-slate-900"
+                          className="absolute top-1/2 rounded-full border-2 border-slate-900"
                           style={{
                             left: `${pct}%`,
-                            width: body.size,
-                            height: body.size,
+                            width: dotSize,
+                            height: dotSize,
                             background: body.gradient,
-                            boxShadow: `0 0 ${body.size}px ${body.color}60`,
+                            boxShadow: `0 0 ${dotSize}px ${body.color}60`,
                             transform: `translate(-50%, -50%)`,
                           }}
-                          title={`${body.name}: ${formatDistance(body.km)}`}
+                          title={`${body.name}: ${formatDistance(body.km)}${detail && detail.diameter_km > 0 ? ` — ⌀ ${detail.diameter_km.toLocaleString()} km` : ''}`}
                         />
                       );
                     })}
@@ -559,6 +687,22 @@ const App: React.FC = () => {
           >
             <MapIcon className="w-4 h-4" />
             <span>Scale Map</span>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setRealisticScale((v) => !v)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border font-mono text-xs uppercase tracking-wider transition-all duration-300"
+            style={{
+              backgroundColor: realisticScale ? `${current.color}20` : 'rgba(15,23,42,0.8)',
+              borderColor: realisticScale ? current.color : 'rgba(100,116,139,0.4)',
+              color: realisticScale ? current.color : '#94a3b8',
+              boxShadow: realisticScale ? `0 0 14px ${current.color}30` : 'none',
+            }}
+          >
+            <Maximize2 className="w-4 h-4" />
+            <span>Realistic Scale</span>
           </motion.button>
 
           <motion.button
